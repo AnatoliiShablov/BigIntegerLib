@@ -2,8 +2,8 @@
 
 big_integer &big_integer::clear() {
     for (size_t i = data_.size() - 1; i > 0 &&
-                                      (data_[i] == 0 && data_[i - 1] < (UINT32_C(1) << 31) ||
-                                       data_[i] == UINT32_MAX && data_[i - 1] >= (UINT32_C(1) << 31)); i--) {
+                                      ((data_[i] == 0 && data_[i - 1] < (UINT32_C(1) << 31)) ||
+                                       (data_[i] == UINT32_MAX && data_[i - 1] >= (UINT32_C(1) << 31))); i--) {
         data_.pop_back();
     }
     return *this;
