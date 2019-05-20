@@ -43,6 +43,23 @@ void uint_vector::pop_back() {
     }
 }
 
+uint32_t *uint_vector::data() {
+    if (data_.index() == 0) {
+        return std::get<0>(data_).data();
+    }
+    if (!std::get<1>(data_).unique()) {
+        std::get<1>(data_) = std::make_shared<std::vector<uint32_t>>(std::get<1>(data_)->begin(), std::get<1>(data_)->end());
+    }
+    return std::get<1>(data_)->data();
+}
+
+uint32_t const *const uint_vector::data() const {
+    if (data_.index() == 0) {
+        return std::get<0>(data_).data();
+    }
+    return std::get<1>(data_)->data();
+}
+
 size_t uint_vector::size() const noexcept {
     if (data_.index() == 0) {
         return std::get<0>(data_)[3];
@@ -79,9 +96,10 @@ void uint_vector::begin_erase(size_t count) {
         }
     } else {
         if (!std::get<1>(data_).unique()) {
-            std::get<1>(data_) = std::make_shared<std::vector<uint32_t>>(std::get<1>(data_)->begin(), std::get<1>(data_)->end());
+            std::get<1>(data_) = std::make_shared<std::vector<uint32_t>>(std::get<1>(data_)->begin() + count, std::get<1>(data_)->end());
+        } else {
+            std::get<1>(data_)->erase(std::get<1>(data_)->begin(), std::get<1>(data_)->begin() + count);
         }
-        std::get<1>(data_)->erase(std::get<1>(data_)->begin(), std::get<1>(data_)->begin() + count);
     }
 }
 
@@ -132,8 +150,11 @@ bool operator==(uint_vector const &lhs, uint_vector const &rhs) {
     if (lhs.size() != rhs.size()) {
         return false;
     }
-    for (size_t i = 0; i < lhs.size(); i++) {
-        if (lhs[i] != rhs[i]) {
+    auto lhs_data = lhs.data();
+    auto rhs_data = rhs.data();
+    auto size = lhs.size();
+    for (size_t i = 0; i < size; i++) {
+        if (lhs_data[i] != rhs_data[i]) {
             return false;
         }
     }
@@ -143,3 +164,5 @@ bool operator==(uint_vector const &lhs, uint_vector const &rhs) {
 bool operator!=(uint_vector const &lhs, uint_vector const &rhs) {
     return !(lhs == rhs);
 }
+
+

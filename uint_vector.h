@@ -9,6 +9,10 @@
 class uint_vector {
     std::variant<std::array<uint32_t, 4>, std::shared_ptr<std::vector<uint32_t>>> data_;
 
+    typedef std::iterator<std::random_access_iterator_tag, uint32_t> iter;
+
+    typedef std::iterator<std::random_access_iterator_tag, uint32_t const> citer;
+
  public:
     uint_vector();
 
@@ -21,6 +25,10 @@ class uint_vector {
     void push_back(uint32_t value);
 
     void pop_back();
+
+    uint32_t *data();
+
+    uint32_t const * const data() const;
 
     size_t size() const noexcept;
 

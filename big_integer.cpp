@@ -11,15 +11,17 @@ big_integer &big_integer::clear() {
 
 big_integer &big_integer::invert() {
     data_.push_back(is_positive() ? 0 : UINT32_MAX);
-    for (size_t i = 0; i < data_.size(); i++) {
-        data_[i] = ~data_[i];
+    auto data = data_.data();
+    auto size = data_.size();
+    for (size_t i = 0; i < size; i++) {
+        data[i] = ~data[i];
     }
-    for (size_t i = 0; i < data_.size(); i++) {
-        if (data_[i] != UINT32_MAX) {
-            data_[i]++;
+    for (size_t i = 0; i < size; i++) {
+        if (data[i] != UINT32_MAX) {
+            data[i]++;
             break;
         }
-        data_[i] = 0;
+        data[i] = 0;
     }
     return clear();
 }
@@ -30,9 +32,11 @@ bool big_integer::is_positive() const {
 
 char big_integer::div10() {
     uint64_t tmp_next = 0;
-    for (size_t i = data_.size(); i--;) {
-        tmp_next = (tmp_next << 32) + data_[i];
-        data_[i] = static_cast<uint32_t>(tmp_next / 10);
+    auto data = data_.data();
+    auto size = data_.size();
+    for (size_t i = size; i--;) {
+        tmp_next = (tmp_next << 32) + data[i];
+        data[i] = static_cast<uint32_t>(tmp_next / 10);
         tmp_next %= 10;
     }
     clear();
@@ -60,10 +64,12 @@ big_integer &big_integer::to_right(uint32_t const &rhs) {
     if (!shift) {
         return *this;
     }
-    for (size_t i = 0; i < data_.size() - 1; i++) {
-        data_[i] = (data_[i] >> shift) + (data_[i + 1] << (32 - shift));
+    auto data = data_.data();
+    auto size = data_.size();
+    for (size_t i = 0; i < size - 1; i++) {
+        data[i] = (data[i] >> shift) + (data[i + 1] << (32 - shift));
     }
-    data_[data_.size() - 1] = (data_[data_.size() - 1] >> shift) + (is_positive() ? 0 : (UINT32_MAX << (32 - shift)));
+    data[size - 1] = (data[size - 1] >> shift) + (is_positive() ? 0 : (UINT32_MAX << (32 - shift)));
     return clear();
 }
 
@@ -86,9 +92,11 @@ big_integer &big_integer::to_left(uint32_t const &rhs) {
     }
     data_.push_back(is_positive() ? 0 : UINT32_MAX);
     uint64_t tmp_next = 0;
-    for (size_t i = 0; i < data_.size(); i++) {
-        tmp_next += static_cast<uint64_t>(data_[i]) << shift;
-        data_[i] = static_cast<uint32_t>(tmp_next);
+    auto data = data_.data();
+    auto size = data_.size();
+    for (size_t i = 0; i < size; i++) {
+        tmp_next += static_cast<uint64_t>(data[i]) << shift;
+        data[i] = static_cast<uint32_t>(tmp_next);
         tmp_next >>= 32;
     }
     return clear();
@@ -106,22 +114,27 @@ big_integer &big_integer::division(big_integer const &rhs) {
         this->data_.assign(1, 0);
         return *this;
     }
-    if (rhs.data_.size() == 1 || rhs.data_.size() == 2 && rhs.data_[1] == 0) {
+    auto data = data_.data();
+    auto size = data_.size();
+    auto rhs_data = rhs.data_.data();
+    auto rhs_size = rhs.data_.size();
+    if (rhs_size == 1 || (rhs_size == 2 && rhs_data[1] == 0)) {
         big_integer result;
-        uint64_t rhs_tmp = rhs.data_[0];
+        uint64_t rhs_tmp = rhs_data[0];
         uint64_t tmp_next = 0;
-        for (size_t pos = data_.size(); pos--;) {
-            tmp_next += data_[pos];
-            data_[pos] = static_cast<uint32_t>(tmp_next / rhs_tmp);
+        for (size_t pos = size; pos--;) {
+            tmp_next += data[pos];
+            data[pos] = static_cast<uint32_t>(tmp_next / rhs_tmp);
             tmp_next = (tmp_next % rhs_tmp) << 32;
         }
         return clear();
     }
 
-    size_t pos = data_.size() - rhs.data_.size();
+    size_t pos = size - rhs_size;
     big_integer result;
     big_integer midrhs;
     result.data_.assign(pos + 2, 0);
+    auto res_data = result.data_.data();
     for (pos += 1; pos--;) {
         uint32_t tmp_divider_left = 0;
         uint32_t tmp_divider_right = UINT32_MAX;
@@ -132,21 +145,21 @@ big_integer &big_integer::division(big_integer const &rhs) {
             if (*this < midrhs) {
                 tmp_divider_right = mid - 1;
             } else if (*this == midrhs) {
-                result.data_[pos] = mid;
+                res_data[pos] = mid;
                 return *this = result.clear();
             } else {
                 tmp_divider_left = mid;
             }
         }
         if (tmp_divider_left + 1 == tmp_divider_right) {
-            result.data_[pos] = tmp_divider_right;
+            res_data[pos] = tmp_divider_right;
             if (*this < multiply(rhs, tmp_divider_right).to_left_by32(pos)) {
-                result.data_[pos] = tmp_divider_left;
+                res_data[pos] = tmp_divider_left;
             }
         } else {
-            result.data_[pos] = tmp_divider_right;
+            res_data[pos] = tmp_divider_right;
         }
-        operator-=(multiply(rhs, result.data_[pos]).to_left_by32(pos));
+        operator-=(multiply(rhs, res_data[pos]).to_left_by32(pos));
     }
     return *this = result.clear();
 }
@@ -214,14 +227,19 @@ big_integer &big_integer::operator=(big_integer const &rhs) {
 big_integer &big_integer::operator+=(big_integer const &rhs) {
     uint32_t lhs_saved = is_positive() ? 0 : UINT32_MAX;
     uint32_t rhs_saved = rhs.is_positive() ? 0 : UINT32_MAX;
-    size_t length = 1 + ((data_.size() > rhs.data_.size()) ? data_.size() : rhs.data_.size());
+    auto size = data_.size();
+
+    auto rhs_size = rhs.data_.size();
+    size_t length = 1 + ((size > rhs_size) ? size : rhs_size);
     uint64_t tmp_next = 0;
+    for (size_t i = 0; i < length - size; i++) {
+        data_.push_back(lhs_saved);
+    }
+    auto data = data_.data();
+    auto rhs_data = rhs.data_.data();
     for (size_t i = 0; i < length; i++) {
-        if (i == data_.size()) {
-            data_.push_back(lhs_saved);
-        }
-        tmp_next += static_cast<uint64_t>(data_[i]) + ((i < rhs.data_.size()) ? rhs.data_[i] : rhs_saved);
-        data_[i] = static_cast<uint32_t>(tmp_next);
+        tmp_next += static_cast<uint64_t>(data[i]) + ((i < rhs_size) ? rhs_data[i] : rhs_saved);
+        data[i] = static_cast<uint32_t>(tmp_next);
         tmp_next >>= 32;
     }
     return clear();
@@ -240,9 +258,11 @@ big_integer multiply(big_integer const &lhs, uint64_t const &rhs) {
     big_integer lhs_new(lhs);
     lhs_new.data_.push_back(0);
     uint64_t tmp_next = 0;
-    for (size_t i = 0; i < lhs_new.data_.size(); i++) {
-        tmp_next += rhs * lhs_new.data_[i];
-        lhs_new.data_[i] = static_cast<uint32_t>(tmp_next);
+    auto lhs_new_data = lhs_new.data_.data();
+    auto lhs_new_size = lhs_new.data_.size();
+    for (size_t i = 0; i < lhs_new_size; i++) {
+        tmp_next += rhs * lhs_new_data[i];
+        lhs_new_data[i] = static_cast<uint32_t>(tmp_next);
         tmp_next >>= 32;
     }
     return lhs_new.clear();
@@ -265,22 +285,27 @@ big_integer &big_integer::operator*=(big_integer const &rhs) {
         operator*=(big_integer(rhs).invert());
         return invert();
     }
-    if (rhs.data_.size() < 2 || (rhs.data_.size() == 2 && rhs.data_[1] == 0)) {
+    auto rhs_data = rhs.data_.data();
+    auto rhs_size = rhs.data_.size();
+
+    if (rhs_size < 2 || (rhs_size == 2 && rhs_data[1] == 0)) {
         data_.push_back(0);
-        uint64_t rhs_tmp = static_cast<uint64_t >(rhs.data_[0]);
+        auto data = data_.data();
+        auto size = data_.size();
+        uint64_t rhs_tmp = static_cast<uint64_t >(rhs_data[0]);
         uint64_t tmp_next = 0;
-        for (size_t i = 0; i < data_.size(); i++) {
-            tmp_next += rhs_tmp * data_[i];
-            data_[i] = static_cast<uint32_t>(tmp_next);
+        for (size_t i = 0; i < size; i++) {
+            tmp_next += rhs_tmp * data[i];
+            data[i] = static_cast<uint32_t>(tmp_next);
             tmp_next >>= 32;
         }
         return clear();
     }
     big_integer accumulate;
     big_integer tmp = *this;
-    for (size_t i = 0; i < rhs.data_.size(); i++) {
-        if (rhs.data_[i]) {
-            accumulate += multiply(tmp, rhs.data_[i]);
+    for (size_t i = 0; i < rhs_size; i++) {
+        if (rhs_data[i]) {
+            accumulate += multiply(tmp, rhs_data[i]);
         }
         tmp.to_left_by32(1);
     }
@@ -309,43 +334,52 @@ big_integer &big_integer::operator%=(big_integer const &rhs) {
 }
 
 big_integer &big_integer::operator&=(big_integer const &rhs) {
+
     uint32_t lhs_saved = is_positive() ? 0 : UINT32_MAX;
     uint32_t rhs_saved = rhs.is_positive() ? 0 : UINT32_MAX;
     size_t length = (data_.size() > rhs.data_.size()) ? data_.size() : rhs.data_.size();
-
+    for (size_t i = 0; i < length - data_.size(); i++) {
+        data_.push_back(lhs_saved);
+    }
+    auto data = data_.data();
+    auto rhs_data = rhs.data_.data();
+    auto rhs_size = rhs.data_.size();
     for (size_t i = 0; i < length; i++) {
-        if (i == data_.size()) {
-            data_.push_back(lhs_saved);
-        }
-        data_[i] &= (i < rhs.data_.size()) ? rhs.data_[i] : rhs_saved;
+        data[i] &= (i < rhs_size) ? rhs_data[i] : rhs_saved;
     }
     return clear();
 }
 
 big_integer &big_integer::operator|=(big_integer const &rhs) {
+
     uint32_t lhs_saved = is_positive() ? 0 : UINT32_MAX;
     uint32_t rhs_saved = rhs.is_positive() ? 0 : UINT32_MAX;
     size_t length = (data_.size() > rhs.data_.size()) ? data_.size() : rhs.data_.size();
-
+    for (size_t i = 0; i < length - data_.size(); i++) {
+        data_.push_back(lhs_saved);
+    }
+    auto data = data_.data();
+    auto rhs_data = rhs.data_.data();
+    auto rhs_size = rhs.data_.size();
     for (size_t i = 0; i < length; i++) {
-        if (i == data_.size()) {
-            data_.push_back(lhs_saved);
-        }
-        data_[i] |= (i < rhs.data_.size()) ? rhs.data_[i] : rhs_saved;
+        data[i] |= (i < rhs_size) ? rhs_data[i] : rhs_saved;
     }
     return clear();
 }
 
 big_integer &big_integer::operator^=(big_integer const &rhs) {
+
     uint32_t lhs_saved = is_positive() ? 0 : UINT32_MAX;
     uint32_t rhs_saved = rhs.is_positive() ? 0 : UINT32_MAX;
     size_t length = (data_.size() > rhs.data_.size()) ? data_.size() : rhs.data_.size();
-
+    for (size_t i = 0; i < length - data_.size(); i++) {
+        data_.push_back(lhs_saved);
+    }
+    auto data = data_.data();
+    auto rhs_data = rhs.data_.data();
+    auto rhs_size = rhs.data_.size();
     for (size_t i = 0; i < length; i++) {
-        if (i == data_.size()) {
-            data_.push_back(lhs_saved);
-        }
-        data_[i] ^= (i < rhs.data_.size()) ? rhs.data_[i] : rhs_saved;
+        data[i] ^= (i < rhs_size) ? rhs_data[i] : rhs_saved;
     }
     return clear();
 }
@@ -394,8 +428,10 @@ big_integer operator-(big_integer const &lhs) {
 
 big_integer operator~(big_integer const &lhs) {
     big_integer tmp(lhs);
-    for (size_t i = 0; i < tmp.data_.size(); i++) {
-        tmp.data_[i] = ~tmp.data_[i];
+    auto tmp_data = tmp.data_.data();
+    auto tmp_size = tmp.data_.size();
+    for (size_t i = 0; i < tmp_size; i++) {
+        tmp_data[i] = ~tmp_data[i];
     }
     return tmp;
 }
